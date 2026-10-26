@@ -1,7 +1,7 @@
 // Estados válidos de una tarea y su texto para mostrar
 const TASK_STATUSES = {
-  'POR HACER': { label: 'Por hacer', className: 'status-todo' },
-  'EN PROCESO': { label: 'En proceso', className: 'status-progress' },
+  'PENDIENTE': { label: 'Pendiente', className: 'status-todo' },
+  'EN PROGRESO': { label: 'En progreso', className: 'status-progress' },
   'REVISIÓN': { label: 'Revisión', className: 'status-review' },
   'HECHO': { label: 'Hecho', className: 'status-done' }
 };
@@ -17,7 +17,7 @@ class Task {
     this.descripcion = descripcion;       // Cadena de texto
     this.asignadoA = asignadoA;           // Cadena de texto
     this.fechaDeEntrega = fechaDeEntrega; // Fecha en formato AAAA-MM-DD
-    this.estado = estado;                 // POR HACER | EN PROCESO | REVISIÓN | HECHO
+    this.estado = estado;                 // PENDIENTE | EN PROGRESO | REVISIÓN | HECHO
   }
 }
 
@@ -83,15 +83,19 @@ class TaskManager {
   }
 
   /**
-   * Crea la tarjeta HTML de una tarea y la devuelve.
+   * Crea la tarjeta HTML de una tarea (card de Bootstrap dentro de una columna)
+   * y devuelve la columna.
    * Se usa textContent para que el texto del usuario no se interprete como HTML.
    */
   createTaskCard(task) {
     const status = TASK_STATUSES[task.estado];
 
+    const column = document.createElement('div');
+    column.className = 'col task-col';
+    column.dataset.id = task.id;
+
     const card = document.createElement('article');
-    card.className = `task-card ${status.className}`;
-    card.dataset.id = task.id;
+    card.className = `card task-card ${status.className}`;
 
     // Encabezado: estado + ID
     const top = document.createElement('div');
@@ -111,7 +115,7 @@ class TaskManager {
     title.textContent = task.nombre;
 
     const description = document.createElement('p');
-    description.className = 'card-description';
+    description.className = 'card-text card-description';
     description.textContent = task.descripcion;
 
     // Persona asignada y fecha de entrega
@@ -151,7 +155,7 @@ class TaskManager {
     srText.className = 'sr-only';
     srText.textContent = `Cambiar estado de la tarea ${task.id}`;
     const select = document.createElement('select');
-    select.className = 'card-select';
+    select.className = 'form-select card-select';
     Object.keys(TASK_STATUSES).forEach((key) => {
       const option = document.createElement('option');
       option.value = key;
@@ -169,7 +173,8 @@ class TaskManager {
     actions.append(selectLabel, deleteButton);
 
     card.append(top, title, description, meta, actions);
-    return card;
+    column.append(card);
+    return column;
   }
 }
 

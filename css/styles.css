@@ -47,14 +47,12 @@ body {
 
 /* ---------- Encabezado ---------- */
 .app-header {
-  padding: 28px 24px 30px;
+  padding: 28px 12px 30px;
   background: var(--purple-950);
   color: #FFFFFF;
 }
 
 .header-inner {
-  max-width: 1280px;
-  margin: 0 auto;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -114,16 +112,8 @@ body {
   transition: width 0.3s;
 }
 
-/* ---------- Distribución ---------- */
-.layout {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 28px 24px 48px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 28px;
-}
+/* ---------- Distribución (columnas con la grilla de Bootstrap) ---------- */
+.layout { padding-top: 28px; padding-bottom: 48px; }
 
 .panel {
   background: #FFFFFF;
@@ -131,11 +121,7 @@ body {
   box-shadow: 0 1px 0 var(--line), 0 18px 40px -28px rgba(42, 20, 88, 0.45);
 }
 
-.form-panel {
-  flex: 1 1 320px;
-  max-width: 420px;
-  padding: 26px;
-}
+.form-panel { padding: 26px; }
 
 .panel-title {
   margin: 0 0 4px;
@@ -151,13 +137,7 @@ body {
 
 .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 
-.field label { font-size: 14px; font-weight: 700; }
-
-.field-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
+.field label { margin: 0; font-size: 14px; font-weight: 700; }
 
 .input {
   width: 100%;
@@ -165,12 +145,14 @@ body {
   padding: 11px 14px;
   border: 1.5px solid var(--purple-200);
   border-radius: 12px;
-  background: var(--paper);
+  background-color: var(--paper);
   color: var(--ink);
   font: inherit;
   font-size: 15px;
   resize: vertical;
 }
+
+.form-select.input { padding-right: 40px; }
 
 .input:focus {
   outline: none;
@@ -180,15 +162,16 @@ body {
 
 .input.is-invalid {
   border-color: var(--danger-line);
-  background: #FFF7F8;
+  background-color: #FFF7F8;
 }
 
-.field-error { color: var(--danger); font-size: 13px; }
+.field-error { margin-top: 0; color: var(--danger); font-size: 13px; }
 .field-error:empty { display: none; }
 
 .form-alert {
   margin-bottom: 18px;
   padding: 12px 14px;
+  border: 1px solid #F3B8C2;
   border-radius: 12px;
   background: var(--danger-bg);
   color: #8E1230;
@@ -210,16 +193,20 @@ body {
   cursor: pointer;
 }
 
+/* Colores del botón primario de Bootstrap con la paleta morada */
 .btn-primary {
   margin-top: 6px;
-  background: var(--purple-600);
-  color: #FFFFFF;
+  --bs-btn-color: #FFFFFF;
+  --bs-btn-bg: var(--purple-600);
+  --bs-btn-hover-color: #FFFFFF;
+  --bs-btn-hover-bg: var(--purple-700);
+  --bs-btn-active-color: #FFFFFF;
+  --bs-btn-active-bg: var(--purple-900);
+  --bs-btn-focus-shadow-rgb: 109, 63, 214;
 }
 
-.btn-primary:hover { background: var(--purple-700); }
-
 /* ---------- Tablero ---------- */
-.board { flex: 999 1 560px; min-width: 0; }
+.board { min-width: 0; }
 
 .board-head {
   display: flex;
@@ -270,19 +257,16 @@ body {
 .empty-state p { margin: 4px 0 0; font-size: 14px; }
 .empty-state .empty-title { margin-top: 10px; font-family: var(--font-display); font-size: 18px; color: var(--purple-900); }
 
-.tasks-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-  gap: 16px;
-}
-
 /* ---------- Tarjeta de tarea ---------- */
 .task-card {
+  height: 100%;
   display: flex;
   flex-direction: column;
   gap: 12px;
   padding: 20px;
+  border: none;
   border-radius: 20px;
+  color: var(--ink);
   background: #FFFFFF;
   box-shadow: 0 1px 0 var(--line), 0 10px 24px -18px rgba(42, 20, 88, 0.4);
   transition: transform 0.15s, box-shadow 0.15s;
@@ -316,7 +300,7 @@ body {
 
 .card-id { font-size: 12px; font-weight: 700; color: #8B80A3; }
 
-.card-title {
+.task-card .card-title {
   margin: 0;
   font-family: var(--font-display);
   font-size: 19px;
@@ -325,7 +309,7 @@ body {
   overflow-wrap: anywhere;
 }
 
-.card-description {
+.task-card .card-description {
   margin: 0;
   font-size: 14px;
   line-height: 1.5;
@@ -383,14 +367,19 @@ body {
 .card-select {
   width: 100%;
   min-height: 44px;
-  padding: 0 10px;
+  padding: 0 34px 0 10px;
   border: 1px solid var(--purple-200);
   border-radius: 12px;
-  background: var(--paper);
+  background-color: var(--paper);
   color: var(--ink);
   font: inherit;
   font-size: 14px;
   cursor: pointer;
+}
+
+.card-select:focus {
+  border-color: var(--purple-600);
+  box-shadow: 0 0 0 4px #E2D6FB;
 }
 
 .btn-delete {
@@ -431,8 +420,6 @@ body {
 
 /* ---------- Móvil ---------- */
 @media (max-width: 720px) {
-  .app-header { padding: 20px 16px; }
-  .layout { padding: 20px 16px 40px; }
-  .form-panel { max-width: none; }
-  .field-row { grid-template-columns: minmax(0, 1fr); }
+  .app-header { padding: 20px 4px; }
+  .layout { padding-top: 20px; padding-bottom: 40px; }
 }

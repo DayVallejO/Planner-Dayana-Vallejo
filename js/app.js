@@ -12,7 +12,7 @@ const formErrors = document.getElementById('formErrors');
 
 const tasksContainer = document.getElementById('tasksContainer');
 const emptyState = document.getElementById('emptyState');
-const STATUS_ORDER = ['POR HACER', 'EN PROCESO', 'REVISIÓN', 'HECHO'];
+const STATUS_ORDER = ['PENDIENTE', 'EN PROGRESO', 'REVISIÓN', 'HECHO'];
 
 let currentFilter = 'TODAS';
 
@@ -165,7 +165,7 @@ document.getElementById('filters').addEventListener('click', (event) => {
     button.classList.toggle('is-active', isActive);
     button.setAttribute('aria-pressed', String(isActive));
   });
-  tasksContainer.querySelectorAll('.task-card').forEach((card) => {
+  tasksContainer.querySelectorAll('.task-col').forEach((card) => {
     applyFilter(card, taskManager.getTaskById(Number(card.dataset.id)));
   });
   updateBoardInfo();
@@ -176,7 +176,7 @@ document.getElementById('filters').addEventListener('click', (event) => {
 function updateBoardInfo() {
   const total = taskManager.getAllTasks().length;
   const done = taskManager.getTasksWithStatus('HECHO').length;
-  const active = taskManager.getTasksWithStatus('EN PROCESO').length
+  const active = taskManager.getTasksWithStatus('EN PROGRESO').length
     + taskManager.getTasksWithStatus('REVISIÓN').length;
   const percent = total === 0 ? 0 : Math.round((done / total) * 100);
 
@@ -194,5 +194,58 @@ function updateBoardInfo() {
   document.getElementById('visibleCount').textContent = visible;
   emptyState.hidden = visible > 0;
 }
+
+// ---------- Tareas de ejemplo ----------
+
+// Devuelve la fecha de hoy + N días en formato AAAA-MM-DD (hora local)
+function daysFromToday(days) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+const SAMPLE_TASKS = [
+  {
+    nombre: 'Diseñar los wireframes',
+    descripcion: 'Bocetar la vista del formulario y la lista de tareas en escritorio y móvil.',
+    asignadoA: 'Dayana Vallejo',
+    fechaDeEntrega: daysFromToday(-1),
+    estado: 'HECHO'
+  },
+  {
+    nombre: 'Maquetar el formulario',
+    descripcion: 'Construir el formulario de tareas con los componentes de Bootstrap.',
+    asignadoA: 'Laura Martínez',
+    fechaDeEntrega: daysFromToday(0),
+    estado: 'REVISIÓN'
+  },
+  {
+    nombre: 'Validar las entradas',
+    descripcion: 'Mostrar un mensaje de error claro cuando un campo del formulario no es válido.',
+    asignadoA: 'Carlos Rodríguez',
+    fechaDeEntrega: daysFromToday(1),
+    estado: 'EN PROGRESO'
+  },
+  {
+    nombre: 'Crear la tarjeta de tarea',
+    descripcion: 'Mostrar nombre, descripción, responsable, fecha y estado de cada tarea.',
+    asignadoA: 'Andrea Gómez',
+    fechaDeEntrega: daysFromToday(3),
+    estado: 'EN PROGRESO'
+  },
+  {
+    nombre: 'Guardar tareas en el navegador',
+    descripcion: 'Persistir la lista de tareas con localStorage para no perderlas al recargar.',
+    asignadoA: 'Santiago Pérez',
+    fechaDeEntrega: daysFromToday(7),
+    estado: 'PENDIENTE'
+  }
+];
+
+SAMPLE_TASKS.forEach((task) => {
+  tasksContainer.append(buildCard(taskManager.addTask(task)));
+});
 
 updateBoardInfo();
