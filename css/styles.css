@@ -404,6 +404,19 @@ body {
   color: var(--danger);
 }
 
+/* Botones del formulario: Guardar / Actualizar y Cancelar */
+.form-buttons { display: flex; gap: 10px; margin-top: 6px; }
+.form-buttons .btn { flex: 1; margin-top: 0; }
+.form-buttons .btn[hidden] { display: none; }
+.form-buttons .btn-outline-secondary { border: 1px solid var(--line); }
+
+/* Las tarjetas se pueden pulsar para editarlas */
+.task-card { cursor: pointer; }
+.task-col.is-editing .task-card {
+  outline: 3px solid var(--purple-600);
+  outline-offset: 2px;
+}
+
 /* Los íconos no reciben el clic: así event.target siempre es el botón */
 .task-card button svg { pointer-events: none; }
 

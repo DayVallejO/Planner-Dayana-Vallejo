@@ -49,7 +49,7 @@
       <div class="col-12 col-lg-5 col-xl-4">
         <section class="panel form-panel" aria-labelledby="formTitle">
           <h2 class="panel-title" id="formTitle">Nueva tarea</h2>
-          <p class="panel-hint">Completa todos los campos para agregarla al tablero.</p>
+          <p class="panel-hint">Completa todos los campos para agregarla al tablero. Haz clic en una tarea para editarla.</p>
 
           <div class="alert alert-danger form-alert" id="formErrors" role="alert" hidden></div>
 
@@ -92,10 +92,10 @@
               </div>
             </div>
 
-            <button type="submit" class="btn btn-primary">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-              Agregar tarea
-            </button>
+            <div class="form-buttons">
+              <button type="submit" class="btn btn-primary" id="submitButton">Guardar</button>
+              <button type="button" class="btn btn-outline-secondary" id="cancelEdit" hidden>Cancelar</button>
+            </div>
           </form>
         </section>
       </div>

@@ -96,28 +96,85 @@ function validateTaskForm() {
   field.addEventListener('input', () => showFieldError(field, errorId, ''));
 });
 
-// ---------- Tarea 3: agregar tareas desde el formulario ----------
+// ---------- Tarea 3: agregar (o actualizar) tareas desde el formulario ----------
+
+const submitButton = document.getElementById('submitButton');
+const cancelEditButton = document.getElementById('cancelEdit');
+const formTitle = document.getElementById('formTitle');
+
+// id de la tarea que se está editando (null = se está creando una nueva)
+let editingTaskId = null;
 
 taskForm.addEventListener('submit', (event) => {
   event.preventDefault();
 
   if (!validateTaskForm()) {
-    return; // Si la validación falla, no se agrega la tarea
+    return; // Si la validación falla, no se guarda la tarea
   }
 
-  const newTask = taskManager.addTask({
+  const taskData = {
     nombre: nameInput.value.trim(),
     descripcion: descriptionInput.value.trim(),
     asignadoA: assigneeInput.value.trim(),
     fechaDeEntrega: dueDateInput.value,
     estado: statusInput.value
-  });
+  };
 
-  taskManager.render(tasksContainer, currentFilter);
-  taskManager.save(); // Tarea 8: guardar después de agregar
+  if (editingTaskId === null) {
+    taskManager.addTask(taskData);
+  } else {
+    taskManager.editTask(editingTaskId, taskData);
+  }
 
+  taskManager.save(); // Tarea 8: guardar después de agregar o actualizar
+  resetForm();        // el botón vuelve a "Guardar" y los campos quedan vacíos
+  refreshBoard();
+});
+
+// Carga los datos de una tarea en el formulario y cambia el botón a "Actualizar"
+function startEditing(taskId) {
+  const task = taskManager.getTaskById(taskId);
+  editingTaskId = task.id;
+
+  nameInput.value = task.nombre;
+  descriptionInput.value = task.descripcion;
+  assigneeInput.value = task.asignadoA;
+  dueDateInput.value = task.fechaDeEntrega;
+  statusInput.value = task.estado;
+
+  submitButton.textContent = 'Actualizar';
+  formTitle.textContent = `Editar tarea #${task.id}`;
+  cancelEditButton.hidden = false;
+  clearErrors();
+  refreshBoard();
+  formTitle.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  nameInput.focus({ preventScroll: true });
+}
+
+// Deja el formulario vacío y en modo "Guardar"
+function resetForm() {
+  editingTaskId = null;
   taskForm.reset();
-  updateBoardInfo();
+  submitButton.textContent = 'Guardar';
+  formTitle.textContent = 'Nueva tarea';
+  cancelEditButton.hidden = true;
+  clearErrors();
+}
+
+function clearErrors() {
+  [
+    [nameInput, 'taskNameError'],
+    [descriptionInput, 'taskDescriptionError'],
+    [assigneeInput, 'taskAssigneeError'],
+    [dueDateInput, 'taskDueDateError'],
+    [statusInput, 'taskStatusError']
+  ].forEach(([field, errorId]) => showFieldError(field, errorId, ''));
+  formErrors.hidden = true;
+}
+
+cancelEditButton.addEventListener('click', () => {
+  resetForm();
+  refreshBoard();
 });
 
 // ---------- Tarea 7: actualizar tareas (delegación de eventos) ----------
@@ -140,6 +197,7 @@ taskList.addEventListener('click', (event) => {
 
     refreshBoard();
     taskManager.save(); // Tarea 8: guardar después de actualizar
+    return;
   }
 
   // Tarea 4: eliminar la tarea
@@ -149,8 +207,19 @@ taskList.addEventListener('click', (event) => {
     const taskId = Number(taskElement.dataset.id);
 
     taskManager.deleteTask(taskId);
+    if (editingTaskId === taskId) {
+      resetForm(); // si se estaba editando, se limpia el formulario
+    }
     refreshBoard();
     taskManager.save(); // Tarea 8: guardar después de eliminar
+    return;
+  }
+
+  // Clic en cualquier otra parte de la tarjeta: cargarla en el formulario
+  const isControl = target.closest('button, select, label');
+  const taskElement = target.closest('.task-col');
+  if (!isControl && taskElement) {
+    startEditing(Number(taskElement.dataset.id));
   }
 });
 
@@ -170,6 +239,13 @@ taskList.addEventListener('change', (event) => {
 // Vuelve a dibujar las tarjetas y los contadores
 function refreshBoard() {
   taskManager.render(tasksContainer, currentFilter);
+
+  // Resalta la tarjeta que se está editando
+  if (editingTaskId !== null) {
+    const editingCard = tasksContainer.querySelector(`[data-id="${editingTaskId}"]`);
+    if (editingCard) editingCard.classList.add('is-editing');
+  }
+
   updateBoardInfo();
 }
 

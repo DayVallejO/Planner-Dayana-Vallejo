@@ -69,6 +69,19 @@ class TaskManager {
     return task;
   }
 
+  // Actualiza todos los datos de una tarea (se usa al editar desde el formulario)
+  editTask(taskId, data) {
+    const task = this.getTaskById(taskId);
+    if (task) {
+      task.nombre = data.nombre;
+      task.descripcion = data.descripcion;
+      task.asignadoA = data.asignadoA;
+      task.fechaDeEntrega = data.fechaDeEntrega;
+      task.estado = data.estado;
+    }
+    return task;
+  }
+
   // Actualiza la persona asignada a una tarea
   assignTask(taskId, assignee) {
     const task = this.getTaskById(taskId);
