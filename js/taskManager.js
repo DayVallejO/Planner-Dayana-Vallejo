@@ -78,8 +78,60 @@ class TaskManager {
     return task;
   }
 
+  // Tarea 7 - Paso 4: busca una tarea por su id y la devuelve
   getTaskById(taskId) {
-    return this.tasks.find((task) => task.id === taskId);
+    let foundTask;
+    for (const task of this.tasks) {
+      const currentTask = task;
+      if (currentTask.id === taskId) {
+        foundTask = currentTask;
+      }
+    }
+    return foundTask;
+  }
+
+  /**
+   * Vuelve a dibujar todas las tarjetas a partir de this.tasks.
+   * 1. Limpia el contenedor  2. Recorre this.tasks
+   * 3. Crea la tarjeta de cada tarea  4. La agrega al contenedor
+   * Si se indica un filtro, oculta las tarjetas que no tengan ese estado.
+   */
+  render(container, filter = 'TODAS') {
+    container.innerHTML = '';
+    for (const task of this.tasks) {
+      const card = this.createTaskCard(task);
+      card.hidden = filter !== 'TODAS' && task.estado !== filter;
+      container.append(card);
+    }
+  }
+
+  // ---------- Tarea 8: persistencia en localStorage ----------
+
+  // Guarda las tareas y el contador de IDs en el navegador
+  save() {
+    const tasksJson = JSON.stringify(this.tasks);
+    localStorage.setItem('tasks', tasksJson);
+
+    const currentId = String(this.currentId);
+    localStorage.setItem('currentId', currentId);
+  }
+
+  // Carga las tareas y el contador de IDs guardados (si existen)
+  load() {
+    const tasksJson = localStorage.getItem('tasks');
+    if (tasksJson !== null) {
+      try {
+        this.tasks = JSON.parse(tasksJson);
+      } catch (error) {
+        console.error('No se pudieron leer las tareas guardadas:', error);
+        this.tasks = [];
+      }
+    }
+
+    const currentId = localStorage.getItem('currentId');
+    if (currentId !== null) {
+      this.currentId = Number(currentId);
+    }
   }
 
   /**
@@ -145,6 +197,17 @@ class TaskManager {
 
     meta.append(person, date);
 
+    // Tarea 7 - Paso 1: botón para marcar la tarea como completada
+    const doneButton = document.createElement('button');
+    doneButton.type = 'button';
+    doneButton.className = 'btn btn-success done-button';
+    if (task.estado === 'HECHO') {
+      doneButton.disabled = true;
+      doneButton.textContent = '✓ Completada';
+    } else {
+      doneButton.textContent = '✓ Marcar como hecha';
+    }
+
     // Acciones: cambiar estado y eliminar
     const actions = document.createElement('div');
     actions.className = 'card-actions';
@@ -172,7 +235,7 @@ class TaskManager {
 
     actions.append(selectLabel, deleteButton);
 
-    card.append(top, title, description, meta, actions);
+    card.append(top, title, description, meta, doneButton, actions);
     column.append(card);
     return column;
   }

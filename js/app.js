@@ -113,47 +113,67 @@ taskForm.addEventListener('submit', (event) => {
     estado: statusInput.value
   });
 
-  const card = buildCard(newTask);
-  tasksContainer.append(card);
+  taskManager.render(tasksContainer, currentFilter);
+  taskManager.save(); // Tarea 8: guardar después de agregar
 
   taskForm.reset();
   updateBoardInfo();
 });
 
-// ---------- Mostrar tarjetas ----------
+// ---------- Tarea 7: actualizar tareas (delegación de eventos) ----------
 
-// Crea la tarjeta con TaskManager y le conecta sus eventos
-function buildCard(task) {
-  const card = taskManager.createTaskCard(task);
-  applyFilter(card, task);
-  attachCardEvents(card, task.id);
-  return card;
-}
+// Un único listener en la lista de tareas, en lugar de uno por botón
+const taskList = document.querySelector('#tasksContainer');
 
-function attachCardEvents(card, taskId) {
-  // Tarea 4: eliminar la tarea del array y la tarjeta del DOM
-  const deleteButton = card.querySelector('.btn-delete');
-  deleteButton.addEventListener('click', () => {
+taskList.addEventListener('click', (event) => {
+  const target = event.target;
+
+  // Marcar la tarea como completada
+  if (target.classList.contains('done-button')) {
+    // Recorrido del DOM: botón -> article (card) -> div (columna con data-id)
+    const taskElement = target.parentElement.parentElement;
+    console.log(taskElement);
+
+    const taskId = Number(taskElement.dataset.id); // el data-id es String
+    const task = taskManager.getTaskById(taskId);
+    task.estado = 'HECHO';
+
+    refreshBoard();
+    taskManager.save(); // Tarea 8: guardar después de actualizar
+  }
+
+  // Tarea 4: eliminar la tarea
+  if (target.classList.contains('btn-delete')) {
+    // botón -> div.card-actions -> article (card) -> div (columna con data-id)
+    const taskElement = target.parentElement.parentElement.parentElement;
+    const taskId = Number(taskElement.dataset.id);
+
     taskManager.deleteTask(taskId);
-    card.remove();
-    updateBoardInfo();
-  });
+    refreshBoard();
+    taskManager.save(); // Tarea 8: guardar después de eliminar
+  }
+});
 
-  // Cambiar el estado desde la tarjeta
-  const select = card.querySelector('.card-select');
-  select.addEventListener('change', () => {
-    const task = taskManager.updateTask(taskId, select.value);
-    card.replaceWith(buildCard(task));
-    updateBoardInfo();
-  });
+// Cambiar el estado desde el selector de la tarjeta
+taskList.addEventListener('change', (event) => {
+  const target = event.target;
+  if (target.classList.contains('card-select')) {
+    const taskElement = target.closest('.task-col');
+    const taskId = Number(taskElement.dataset.id);
+
+    taskManager.updateTask(taskId, target.value);
+    refreshBoard();
+    taskManager.save(); // Tarea 8: guardar después de actualizar
+  }
+});
+
+// Vuelve a dibujar las tarjetas y los contadores
+function refreshBoard() {
+  taskManager.render(tasksContainer, currentFilter);
+  updateBoardInfo();
 }
 
 // ---------- Filtros ----------
-
-function applyFilter(card, task) {
-  const hidden = currentFilter !== 'TODAS' && task.estado !== currentFilter;
-  card.hidden = hidden;
-}
 
 document.getElementById('filters').addEventListener('click', (event) => {
   const chip = event.target.closest('.chip');
@@ -165,10 +185,7 @@ document.getElementById('filters').addEventListener('click', (event) => {
     button.classList.toggle('is-active', isActive);
     button.setAttribute('aria-pressed', String(isActive));
   });
-  tasksContainer.querySelectorAll('.task-col').forEach((card) => {
-    applyFilter(card, taskManager.getTaskById(Number(card.dataset.id)));
-  });
-  updateBoardInfo();
+  refreshBoard();
 });
 
 // ---------- Contadores ----------
@@ -244,8 +261,16 @@ const SAMPLE_TASKS = [
   }
 ];
 
-SAMPLE_TASKS.forEach((task) => {
-  tasksContainer.append(buildCard(taskManager.addTask(task)));
-});
+// ---------- Tarea 8: cargar las tareas al iniciar ----------
+// Orden: 1) crear el TaskManager (arriba)  2) cargar  3) renderizar
 
-updateBoardInfo();
+const hasSavedTasks = localStorage.getItem('tasks') !== null;
+taskManager.load();
+
+// La primera vez (sin nada guardado) se agregan las tareas de ejemplo
+if (!hasSavedTasks) {
+  SAMPLE_TASKS.forEach((task) => taskManager.addTask(task));
+  taskManager.save();
+}
+
+refreshBoard();

@@ -404,6 +404,26 @@ body {
   color: var(--danger);
 }
 
+/* Los íconos no reciben el clic: así event.target siempre es el botón */
+.task-card button svg { pointer-events: none; }
+
+/* Tarea 7: botón para marcar la tarea como completada */
+.done-button {
+  width: 100%;
+  min-height: 44px;
+  margin-bottom: 8px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.done-button:disabled {
+  background: #DDF3E8;
+  border-color: #DDF3E8;
+  color: #145C39;
+  opacity: 1;
+}
+
 /* Colores de la etiqueta según el estado */
 .status-todo     { --badge-bg: #EEEAF5; --badge-ink: #463C5C; --badge-dot: #8B80A3; }
 .status-progress { --badge-bg: #E7DEFB; --badge-ink: #4B22B0; --badge-dot: #6D3FD6; }
