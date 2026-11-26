@@ -99,42 +99,64 @@ describe('TaskManager', () => {
     });
   });
 
-  describe('save y load (localStorage)', () => {
-    // Se guarda lo que había en localStorage para no borrar las tareas reales
-    let savedTasks;
-    let savedId;
+  describe('Tareas que llegan del backend', () => {
+    it('addTask respeta el id que asignó la base de datos', () => {
+      const task = taskManager.addTask({ ...sampleTask(), id: 42 });
 
-    beforeEach(() => {
-      savedTasks = localStorage.getItem('tasks');
-      savedId = localStorage.getItem('currentId');
+      expect(task.id).to.equal(42);
+      expect(taskManager.getTaskById(42)).to.equal(task);
     });
 
-    afterEach(() => {
-      if (savedTasks === null) localStorage.removeItem('tasks');
-      else localStorage.setItem('tasks', savedTasks);
-      if (savedId === null) localStorage.removeItem('currentId');
-      else localStorage.setItem('currentId', savedId);
+    it('setTasks reemplaza toda la lista', () => {
+      taskManager.addTask(sampleTask());
+
+      taskManager.setTasks([
+        new Task(7, 'Tarea de prueba', 'Descripción', 'Dayana Vallejo', '2026-12-01', 'PENDIENTE'),
+        new Task(8, 'Tarea de prueba', 'Descripción', 'Dayana Vallejo', '2026-12-01', 'HECHO')
+      ]);
+
+      expect(taskManager.tasks.length).to.equal(2);
+      expect(taskManager.getTaskById(8).estado).to.equal('HECHO');
     });
 
-    it('guarda las tareas y el contador de ids', () => {
-      taskManager.addTask(sampleTask());
-      taskManager.save();
+    it('replaceTask cambia la tarea por la versión del servidor', () => {
+      const task = taskManager.addTask(sampleTask());
+      const updated = new Task(task.id, 'Nombre actualizado', 'Descripción', 'Dayana Vallejo', '2026-12-01', 'HECHO');
 
-      const stored = JSON.parse(localStorage.getItem('tasks'));
-      expect(stored.length).to.equal(1);
-      expect(localStorage.getItem('currentId')).to.equal('1');
+      taskManager.replaceTask(updated);
+
+      expect(taskManager.tasks.length).to.equal(1);
+      expect(taskManager.getTaskById(task.id).nombre).to.equal('Nombre actualizado');
+    });
+  });
+
+  describe('api.js (conversión de datos)', () => {
+    it('toApiTask convierte los campos y el estado al formato del backend', () => {
+      const json = toApiTask({ ...sampleTask(), estado: 'EN PROGRESO' });
+
+      expect(json).to.deep.equal({
+        name: 'Tarea de prueba',
+        description: 'Descripción de la tarea de prueba',
+        assignedTo: 'Dayana Vallejo',
+        dueDate: '2026-12-01',
+        status: 'IN_PROGRESS'
+      });
     });
 
-    it('carga las tareas guardadas', () => {
-      taskManager.addTask(sampleTask());
-      taskManager.addTask(sampleTask());
-      taskManager.save();
+    it('fromApiTask convierte la respuesta del backend en un Task', () => {
+      const task = fromApiTask({
+        id: 5,
+        name: 'Tarea de prueba',
+        description: 'Descripción de la tarea de prueba',
+        assignedTo: 'Dayana Vallejo',
+        dueDate: '2026-12-01',
+        status: 'REVIEW'
+      });
 
-      const otherManager = new TaskManager();
-      otherManager.load();
-
-      expect(otherManager.tasks.length).to.equal(2);
-      expect(otherManager.currentId).to.equal(2);
+      expect(task).to.be.instanceOf(Task);
+      expect(task.id).to.equal(5);
+      expect(task.asignadoA).to.equal('Dayana Vallejo');
+      expect(task.estado).to.equal('REVISIÓN');
     });
   });
 

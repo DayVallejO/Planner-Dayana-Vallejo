@@ -1,4 +1,4 @@
-// Instancia única que guarda las tareas en memoria
+// Instancia única que guarda en memoria las tareas que llegan del backend
 const taskManager = new TaskManager();
 
 // ---------- Referencias al DOM ----------
@@ -12,6 +12,8 @@ const formErrors = document.getElementById('formErrors');
 
 const tasksContainer = document.getElementById('tasksContainer');
 const emptyState = document.getElementById('emptyState');
+const boardError = document.getElementById('boardError');
+const boardErrorText = document.getElementById('boardErrorText');
 const STATUS_ORDER = ['PENDIENTE', 'EN PROGRESO', 'REVISIÓN', 'HECHO'];
 
 let currentFilter = 'TODAS';
@@ -96,6 +98,43 @@ function validateTaskForm() {
   field.addEventListener('input', () => showFieldError(field, errorId, ''));
 });
 
+// ---------- Mensajes al usuario (notificaciones toast) ----------
+
+const toastStack = document.getElementById('toastStack');
+
+// type: 'success' o 'error'
+function showToast(message, type = 'success') {
+  const toast = document.createElement('div');
+  toast.className = `app-toast app-toast-${type}`;
+  toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+  toast.textContent = message;
+  toastStack.append(toast);
+
+  setTimeout(() => {
+    toast.classList.add('is-leaving');
+    setTimeout(() => toast.remove(), 300);
+  }, type === 'error' ? 6000 : 3000);
+}
+
+// Campos del backend -> campo del formulario y su mensaje de error
+const SERVER_FIELDS = {
+  name: [nameInput, 'taskNameError'],
+  description: [descriptionInput, 'taskDescriptionError'],
+  assignedTo: [assigneeInput, 'taskAssigneeError'],
+  dueDate: [dueDateInput, 'taskDueDateError'],
+  status: [statusInput, 'taskStatusError']
+};
+
+// Muestra los errores de validación que devolvió el servidor (400) debajo de cada campo
+function showServerFieldErrors(fieldErrors) {
+  Object.entries(fieldErrors).forEach(([field, message]) => {
+    if (SERVER_FIELDS[field]) {
+      const [input, errorId] = SERVER_FIELDS[field];
+      showFieldError(input, errorId, message);
+    }
+  });
+}
+
 // ---------- Tarea 3: agregar (o actualizar) tareas desde el formulario ----------
 
 const submitButton = document.getElementById('submitButton');
@@ -105,11 +144,11 @@ const formTitle = document.getElementById('formTitle');
 // id de la tarea que se está editando (null = se está creando una nueva)
 let editingTaskId = null;
 
-taskForm.addEventListener('submit', (event) => {
+taskForm.addEventListener('submit', async (event) => {
   event.preventDefault();
 
   if (!validateTaskForm()) {
-    return; // Si la validación falla, no se guarda la tarea
+    return; // Si la validación falla, no se envía nada al servidor
   }
 
   const taskData = {
@@ -120,15 +159,38 @@ taskForm.addEventListener('submit', (event) => {
     estado: statusInput.value
   };
 
-  if (editingTaskId === null) {
-    taskManager.addTask(taskData);
-  } else {
-    taskManager.editTask(editingTaskId, taskData);
-  }
+  const isEditing = editingTaskId !== null;
+  submitButton.disabled = true;
 
-  taskManager.save(); // Tarea 8: guardar después de agregar o actualizar
-  resetForm();        // el botón vuelve a "Guardar" y los campos quedan vacíos
-  refreshBoard();
+  try {
+    // La interfaz se actualiza solo cuando el backend responde con éxito
+    if (isEditing) {
+      const updated = await taskApi.update(editingTaskId, taskData);
+      taskManager.replaceTask(updated);
+    } else {
+      const created = await taskApi.create(taskData);
+      taskManager.addTask(created);
+    }
+
+    resetForm(); // el botón vuelve a "Guardar" y los campos quedan vacíos
+    refreshBoard();
+    showToast(isEditing ? 'Tarea actualizada.' : 'Tarea guardada.');
+  } catch (error) {
+    if (error.status === 400) {
+      showServerFieldErrors(error.fieldErrors);
+      formErrors.textContent = error.message;
+      formErrors.hidden = false;
+    } else if (error.status === 404) {
+      // La tarea ya no existe en la base de datos
+      showToast(error.message, 'error');
+      resetForm();
+      await loadTasks();
+    } else {
+      showToast(error.message, 'error');
+    }
+  } finally {
+    submitButton.disabled = false;
+  }
 });
 
 // Carga los datos de una tarea en el formulario y cambia el botón a "Actualizar"
@@ -177,6 +239,43 @@ cancelEditButton.addEventListener('click', () => {
   refreshBoard();
 });
 
+// ---------- Cambiar el estado y eliminar (conectados con PUT y DELETE) ----------
+
+// Envía la tarea con un estado nuevo al backend (PUT) y actualiza la tarjeta
+async function changeStatus(taskId, newStatus) {
+  const task = taskManager.getTaskById(taskId);
+  try {
+    const updated = await taskApi.update(taskId, { ...task, estado: newStatus });
+    taskManager.replaceTask(updated);
+    showToast(newStatus === 'HECHO' ? 'Tarea marcada como hecha.' : 'Estado actualizado.');
+  } catch (error) {
+    showToast(error.message, 'error');
+    if (error.status === 404) {
+      await loadTasks(); // la tarea ya no existe: se vuelve a cargar la lista
+      return;
+    }
+  }
+  refreshBoard(); // si falló, la tarjeta vuelve a mostrar el estado anterior
+}
+
+// Elimina la tarea en el backend (DELETE) y la quita de la página
+async function removeTask(taskId) {
+  try {
+    await taskApi.remove(taskId);
+    taskManager.deleteTask(taskId);
+    if (editingTaskId === taskId) {
+      resetForm(); // si se estaba editando, se limpia el formulario
+    }
+    refreshBoard();
+    showToast('Tarea eliminada.');
+  } catch (error) {
+    showToast(error.message, 'error');
+    if (error.status === 404) {
+      await loadTasks();
+    }
+  }
+}
+
 // ---------- Tarea 7: actualizar tareas (delegación de eventos) ----------
 
 // Un único listener en la lista de tareas, en lugar de uno por botón
@@ -189,29 +288,21 @@ taskList.addEventListener('click', (event) => {
   if (target.classList.contains('done-button')) {
     // Recorrido del DOM: botón -> article (card) -> div (columna con data-id)
     const taskElement = target.parentElement.parentElement;
-    console.log(taskElement);
-
     const taskId = Number(taskElement.dataset.id); // el data-id es String
-    const task = taskManager.getTaskById(taskId);
-    task.estado = 'HECHO';
 
-    refreshBoard();
-    taskManager.save(); // Tarea 8: guardar después de actualizar
+    target.disabled = true;
+    changeStatus(taskId, 'HECHO');
     return;
   }
 
   // Tarea 4: eliminar la tarea
-  if (target.classList.contains('btn-delete')) {
-    // botón -> div.card-actions -> article (card) -> div (columna con data-id)
-    const taskElement = target.parentElement.parentElement.parentElement;
+  const deleteButton = target.closest('.btn-delete');
+  if (deleteButton) {
+    const taskElement = deleteButton.closest('.task-col');
     const taskId = Number(taskElement.dataset.id);
 
-    taskManager.deleteTask(taskId);
-    if (editingTaskId === taskId) {
-      resetForm(); // si se estaba editando, se limpia el formulario
-    }
-    refreshBoard();
-    taskManager.save(); // Tarea 8: guardar después de eliminar
+    deleteButton.disabled = true;
+    removeTask(taskId);
     return;
   }
 
@@ -230,9 +321,8 @@ taskList.addEventListener('change', (event) => {
     const taskElement = target.closest('.task-col');
     const taskId = Number(taskElement.dataset.id);
 
-    taskManager.updateTask(taskId, target.value);
-    refreshBoard();
-    taskManager.save(); // Tarea 8: guardar después de actualizar
+    target.disabled = true;
+    changeStatus(taskId, target.value);
   }
 });
 
@@ -285,68 +375,26 @@ function updateBoardInfo() {
 
   const visible = currentFilter === 'TODAS' ? total : taskManager.getTasksWithStatus(currentFilter).length;
   document.getElementById('visibleCount').textContent = visible;
-  emptyState.hidden = visible > 0;
+  emptyState.hidden = visible > 0 || !boardError.hidden;
 }
 
-// ---------- Tareas de ejemplo ----------
+// ---------- Cargar las tareas desde el backend ----------
 
-// Devuelve la fecha de hoy + N días en formato AAAA-MM-DD (hora local)
-function daysFromToday(days) {
-  const date = new Date();
-  date.setDate(date.getDate() + days);
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${date.getFullYear()}-${month}-${day}`;
-}
-
-const SAMPLE_TASKS = [
-  {
-    nombre: 'Diseñar los wireframes',
-    descripcion: 'Bocetar la vista del formulario y la lista de tareas en escritorio y móvil.',
-    asignadoA: 'Dayana Vallejo',
-    fechaDeEntrega: daysFromToday(-1),
-    estado: 'HECHO'
-  },
-  {
-    nombre: 'Maquetar el formulario',
-    descripcion: 'Construir el formulario de tareas con los componentes de Bootstrap.',
-    asignadoA: 'Laura Martínez',
-    fechaDeEntrega: daysFromToday(0),
-    estado: 'REVISIÓN'
-  },
-  {
-    nombre: 'Validar las entradas',
-    descripcion: 'Mostrar un mensaje de error claro cuando un campo del formulario no es válido.',
-    asignadoA: 'Carlos Rodríguez',
-    fechaDeEntrega: daysFromToday(1),
-    estado: 'EN PROGRESO'
-  },
-  {
-    nombre: 'Crear la tarjeta de tarea',
-    descripcion: 'Mostrar nombre, descripción, responsable, fecha y estado de cada tarea.',
-    asignadoA: 'Andrea Gómez',
-    fechaDeEntrega: daysFromToday(3),
-    estado: 'EN PROGRESO'
-  },
-  {
-    nombre: 'Guardar tareas en el navegador',
-    descripcion: 'Persistir la lista de tareas con localStorage para no perderlas al recargar.',
-    asignadoA: 'Santiago Pérez',
-    fechaDeEntrega: daysFromToday(7),
-    estado: 'PENDIENTE'
+// Pide las tareas al backend (GET) y las dibuja.
+// Si el servidor está apagado, muestra un aviso con un botón para reintentar.
+async function loadTasks() {
+  try {
+    const tasks = await taskApi.getAll();
+    taskManager.setTasks(tasks);
+    boardError.hidden = true;
+  } catch (error) {
+    taskManager.setTasks([]);
+    boardErrorText.textContent = error.message;
+    boardError.hidden = false;
   }
-];
-
-// ---------- Tarea 8: cargar las tareas al iniciar ----------
-// Orden: 1) crear el TaskManager (arriba)  2) cargar  3) renderizar
-
-const hasSavedTasks = localStorage.getItem('tasks') !== null;
-taskManager.load();
-
-// La primera vez (sin nada guardado) se agregan las tareas de ejemplo
-if (!hasSavedTasks) {
-  SAMPLE_TASKS.forEach((task) => taskManager.addTask(task));
-  taskManager.save();
+  refreshBoard();
 }
 
-refreshBoard();
+document.getElementById('retryButton').addEventListener('click', loadTasks);
+
+document.addEventListener('DOMContentLoaded', loadTasks);

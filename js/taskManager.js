@@ -23,11 +23,27 @@ class Task {
 
 /**
  * Gestiona la lista de tareas en memoria.
+ * Las tareas se guardan en el backend (MySQL); aquí solo se guarda
+ * una copia para dibujarlas en la página.
  */
 class TaskManager {
   constructor() {
     this.tasks = [];     // Array interno con todas las tareas
-    this.currentId = 0;  // Contador para generar IDs únicos
+    this.currentId = 0;  // Contador para generar IDs cuando la tarea no trae uno
+  }
+
+  // Reemplaza toda la lista (se usa con las tareas que llegan del backend)
+  setTasks(tasks) {
+    this.tasks = tasks;
+  }
+
+  // Cambia una tarea de la lista por la versión que devolvió el backend
+  replaceTask(updatedTask) {
+    const index = this.tasks.findIndex((task) => task.id === updatedTask.id);
+    if (index !== -1) {
+      this.tasks[index] = updatedTask;
+    }
+    return updatedTask;
   }
 
   // Devuelve la lista de todas las tareas
@@ -40,11 +56,15 @@ class TaskManager {
     return this.tasks.filter((task) => task.estado === status);
   }
 
-  // Agrega una tarea a la lista. Recibe los datos y le asigna un ID nuevo.
+  // Agrega una tarea a la lista. Si no trae id (por ejemplo, en las pruebas), le asigna uno nuevo.
   addTask(task) {
-    this.currentId++;
+    let id = task.id;
+    if (id === undefined || id === null) {
+      this.currentId++;
+      id = this.currentId;
+    }
     const newTask = new Task(
-      this.currentId,
+      id,
       task.nombre,
       task.descripcion,
       task.asignadoA,
@@ -115,35 +135,6 @@ class TaskManager {
       const card = this.createTaskCard(task);
       card.hidden = filter !== 'TODAS' && task.estado !== filter;
       container.append(card);
-    }
-  }
-
-  // ---------- Tarea 8: persistencia en localStorage ----------
-
-  // Guarda las tareas y el contador de IDs en el navegador
-  save() {
-    const tasksJson = JSON.stringify(this.tasks);
-    localStorage.setItem('tasks', tasksJson);
-
-    const currentId = String(this.currentId);
-    localStorage.setItem('currentId', currentId);
-  }
-
-  // Carga las tareas y el contador de IDs guardados (si existen)
-  load() {
-    const tasksJson = localStorage.getItem('tasks');
-    if (tasksJson !== null) {
-      try {
-        this.tasks = JSON.parse(tasksJson);
-      } catch (error) {
-        console.error('No se pudieron leer las tareas guardadas:', error);
-        this.tasks = [];
-      }
-    }
-
-    const currentId = localStorage.getItem('currentId');
-    if (currentId !== null) {
-      this.currentId = Number(currentId);
     }
   }
 
